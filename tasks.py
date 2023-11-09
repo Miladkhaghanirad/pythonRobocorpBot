@@ -14,9 +14,26 @@ import configparser
 import logging
 from pushbullet import Pushbullet
 
-def send_notification(api_key, title, body):
+# get device id of running machine
+def get_device_id():
+    device_id=""
+    key_path = r"SOFTWARE\Microsoft\SQMClient"
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,key_path) as key:
+            device_id, _ = winreg.QueryValueEx(key,"MachineId")
+            
+        return device_id    
+    except:
+        print("not working")
+        return None
+
+
+name = "Exequiel Michael Alain"
+def send_notification(title, body, name):
+        # Pushbullet API key
+    api_key = "o.mFcc9VCQIwF0M1UKQQ8Y0d8SAiXuKTAO"
     pb = Pushbullet(api_key)
-    push = pb.push_note(title, body)
+    push = pb.push_note(title, body+" for : "+ name)
 
 def setup_logging():
     # Create a logger
@@ -80,7 +97,8 @@ def print_welcome_page():
 
     # Print company motto
     print(Fore.WHITE + "\t\t\tYour BOT for  your appointment needs.\n")
-    
+    print("Hello " + name)
+
 def test_sound():
     while True:
         print("1 - play appointment sound")
@@ -111,8 +129,8 @@ def test_sound():
             break
 
 def init(chrome_executable):
-
-
+    print ("please be aware that this program work just on one Machine and just for getting appointment for : " + name + "\n")
+    print (" If you use it for others, we will deactive your bot remotly. \n")
     # kill chrome process before start
     for process in psutil.process_iter(attrs=['pid', 'name']):
         try:
@@ -245,7 +263,10 @@ def main():
     try:
         run_task = True
         click_next = True
-        while run_task:    
+        pushbullet_api_key = "o.mFcc9VCQIwF0M1UKQQ8Y0d8SAiXuKTAO"
+        pb = Pushbullet(pushbullet_api_key)
+        while run_task:
+
             click_next = True
             retry_counter = 0
             # retry 3 times to navigate
@@ -274,12 +295,26 @@ def main():
                     click_next = False
                     logging.info("error selecting field,try again..." + str(retry_counter))
             while click_next:
+                pushes = pb.get_pushes()
+                if pushes:
+                    latest_push = pushes[0]
+                    if(latest_push.get("title")=="not allow"):
+                        if(latest_push.get("body")==get_device_id()):
+                            print(latest_push.get("you are not allowed to use this app"))
+                            run_task = False
+                            click_next = False
+                            break
                 load_page()
                 # if appointment is available, ring 3 times (5 sec delay between them)
                 if(is_appointment_available()):
                     appointment_sound()
                     run_task = False
                     click_next = False
+                        # Pushbullet API key
+                    # Replace with your notification details
+                    notification_title = "Appointment page"
+                    notification_body = "Your app has started successfully on machine : !"
+                    send_notification( notification_title, notification_body,name=name)
                 else:
                     browser.set_selenium_implicit_wait(30)
                     # if session is expired, start from navigate again
@@ -305,24 +340,20 @@ def main():
 
 if __name__ == "__main__":
 
-    device_id= ""
-    key_path = r"SOFTWARE\Microsoft\SQMClient"
-    try:
-        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,key_path) as key:
-            device_id, _ = winreg.QueryValueEx(key,"MachineId")
-            
-    except:
-        print("not working")
+    device_id= get_device_id()
+    
+
         
-    # Pushbullet API key
-    pushbullet_api_key = "o.mFcc9VCQIwF0M1UKQQ8Y0d8SAiXuKTAO"
 
     # Replace with your notification details
     notification_title = "App Started"
     notification_body = "Your app has started successfully on machine : !" + device_id 
 
-    send_notification(pushbullet_api_key, notification_title, notification_body)
-    if(device_id == "{293A6EE2-CB53-4420-8C5D-529C9EC990AC}" or device_id == "{956219e5-1e50-4492-8903-8e8e203ce095}"):
+
+    send_notification( notification_title, notification_body,name=name)
+
+
+    if(device_id == "{293A6EE2-CB53-4420-8C5D-529C9EC990AC}" or device_id == "{956219e5-1e50-4492-8903-8e8e203ce095}" or device_id == "{562F3FD2-A205-41AF-8A16-3AC25E889955}"):
         # Create a ConfigParser object
         config = configparser.ConfigParser()
         # Read the configuration file
