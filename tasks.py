@@ -9,9 +9,14 @@ from datetime import datetime
 import winreg
 from robocorp import tasks
 import colorama
-from colorama import Fore, Back, Style
+from colorama import Fore, Style
 import configparser
 import logging
+from pushbullet import Pushbullet
+
+def send_notification(api_key, title, body):
+    pb = Pushbullet(api_key)
+    push = pb.push_note(title, body)
 
 def setup_logging():
     # Create a logger
@@ -298,7 +303,6 @@ def main():
         else:
             logging.error("bot faced error: ")
 
-
 if __name__ == "__main__":
 
     device_id= ""
@@ -308,19 +312,29 @@ if __name__ == "__main__":
             device_id, _ = winreg.QueryValueEx(key,"MachineId")
             
     except:
-        logging.info("not working")
-    
-    if(device_id == "{293A6EE2-CB53-4420-8C5D-529C9EC990AC}"):
+        print("not working")
+        
+    # Pushbullet API key
+    pushbullet_api_key = "o.mFcc9VCQIwF0M1UKQQ8Y0d8SAiXuKTAO"
+
+    # Replace with your notification details
+    notification_title = "App Started"
+    notification_body = "Your app has started successfully on machine : !" + device_id 
+
+    send_notification(pushbullet_api_key, notification_title, notification_body)
+    if(device_id == "{293A6EE2-CB53-4420-8C5D-529C9EC990AC}" or device_id == "{956219e5-1e50-4492-8903-8e8e203ce095}"):
         # Create a ConfigParser object
         config = configparser.ConfigParser()
         # Read the configuration file
         config.read('config.ini')
         # Access values from the configuration file
         verbus = config.get('Database', 'verbus')
-        ignore_welcome_page = config.get('Database', 'ignore_test_page')
+        ignore_test_page = config.get('Database', 'ignore_test_page')
         print_welcome_page()
         # chrome exe file address
-        test_sound()
+        if(ignore_test_page=="False"):
+            test_sound()
+            
         chrome_executable = config.get('Database', 'chrome_address')
         init(chrome_executable)
         
@@ -329,6 +343,4 @@ if __name__ == "__main__":
             disable_logging()
         main()
     else:
-        browser.set_selenium_implicit_wait(30)
-        browser.attach_chrome_browser(9222)
-        browser.go_to("https://eu.jotform.com/app/232777319317362")
+        print("this machine is not supported ")
