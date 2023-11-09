@@ -16,3 +16,6 @@ testrun/*
 .~lock*
 *.pkl
 challenge.xlsx
+dist/
+buil/
+*.spec
