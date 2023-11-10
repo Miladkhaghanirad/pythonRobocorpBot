@@ -19,3 +19,4 @@ challenge.xlsx
 build/
 dist/
 *.spec
+cred/

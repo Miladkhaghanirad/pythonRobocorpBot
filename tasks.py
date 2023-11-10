@@ -7,17 +7,48 @@ import winsound
 import psutil
 from datetime import datetime
 import winreg
-from robocorp import tasks
 import colorama
 from colorama import Fore, Style
 import configparser
 import logging
-from pushbullet import Pushbullet
+import firebase_admin
+from firebase_admin import credentials,db
 
-def send_notification(api_key, title, body):
-    pb = Pushbullet(api_key)
-    push = pb.push_note(title, body)
+# get device id of running machine
+def get_deviceID():
+    device_id= ""
+    key_path = r"SOFTWARE\Microsoft\SQMClient"
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,key_path) as key:
+            device_id, _ = winreg.QueryValueEx(key,"MachineId")
+            
+    except:
+        print("not working")
 
+    return device_id
+
+def init_firebase():
+    # Replace with your Firebase project credentials file
+    cred = credentials.Certificate("./cred/cred.json")
+    firebase_admin.initialize_app(cred,{"databaseURL": "https://pythonrobocorp-default-rtdb.europe-west1.firebasedatabase.app/"})
+    return db.reference('/')
+
+
+# retrieving data from root node of firebase
+def firebase_readDate():
+    ref = db.reference('/allowed')
+    return ref.get()
+
+# send data to root node of firebase
+def firebase_sendData(message):
+    ref = db.reference('/running')
+    new_message_ref = ref.push()
+    new_message_ref.set({
+    'sender': 'Bot',
+    'message': message
+})
+
+# setup logging for log in consol
 def setup_logging():
     # Create a logger
     logger = logging.getLogger()
@@ -33,25 +64,24 @@ def setup_logging():
 
     # Add handlers to the logger
     logger.addHandler(console_handler)
-
+# disable logging if verbus is false in config file
 def disable_logging():
     # Create a logger
     print("disable logging")
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)  # Set the logger to the highest level (CRITICAL)
-
+# play sound if gets an appointment
 def appointment_sound():
     winsound.Beep(500, 1000)
     time.sleep(5)
     winsound.Beep(500, 1000)
     time.sleep(5)
     winsound.Beep(500, 1000)
-
+# play sound if bot stop working
 def stop_sound():
     winsound.Beep(500, 500)
     time.sleep(1)
     winsound.Beep(500, 2000)  
-
 # print welcome page
 def print_welcome_page():
     # Set text color to blue
@@ -80,7 +110,7 @@ def print_welcome_page():
 
     # Print company motto
     print(Fore.WHITE + "\t\t\tYour BOT for  your appointment needs.\n")
-    
+# test sound before start
 def test_sound():
     while True:
         print("1 - play appointment sound")
@@ -109,7 +139,7 @@ def test_sound():
                 print("Please contact us in telegram: https://t.me/MimMarouf ")
         if(choice == "3"):
             break
-
+# init all component
 def init(chrome_executable):
 
 
@@ -152,7 +182,6 @@ def start_navigate():
     browser.wait_until_element_is_visible('//*[@id="applicationForm:managedForm:proceed"]/span',30)
     browser.click_element('//*[@id="applicationForm:managedForm:proceed"]/span')
     logging.info("end navigate")
-
 # wait 30 sec for loading page 
 def load_page():
     try:
@@ -201,7 +230,7 @@ def select_field():
     logging.info("end of select field")
 
 # get remaining time 
-def is_remaining_time_enough():
+def is_remaining_time_enough(expected_time_str):
     try:
         logging.info("start get timer")
         load_page()
@@ -210,7 +239,6 @@ def is_remaining_time_enough():
         logging.info(time_str)
         remaining_time = datetime.strptime("00:"+time_str, time_format)
         logging.info(remaining_time)
-        expected_time_str = "00:03:00"
         expected_remaining_time = datetime.strptime(expected_time_str, time_format)
         logging.info(expected_remaining_time)
         return remaining_time > expected_remaining_time
@@ -241,7 +269,7 @@ def session_is_not_expired():
     return result
 
 # run the main function
-def main():
+def main(expected_remaining_time):
     try:
         run_task = True
         click_next = True
@@ -283,7 +311,7 @@ def main():
                 else:
                     browser.set_selenium_implicit_wait(30)
                     # if session is expired, start from navigate again
-                    if(session_is_not_expired() and is_remaining_time_enough()):
+                    if(session_is_not_expired() and is_remaining_time_enough(expected_remaining_time)):
                         logging.info("Session is still valid")
                         try:
                             browser.wait_until_element_is_visible('//*[@id="applicationForm:managedForm:proceed"]',30)
@@ -304,24 +332,10 @@ def main():
             logging.error("bot faced error: ")
 
 if __name__ == "__main__":
-
-    device_id= ""
-    key_path = r"SOFTWARE\Microsoft\SQMClient"
-    try:
-        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,key_path) as key:
-            device_id, _ = winreg.QueryValueEx(key,"MachineId")
-            
-    except:
-        print("not working")
-        
-    # Pushbullet API key
-    pushbullet_api_key = "o.mFcc9VCQIwF0M1UKQQ8Y0d8SAiXuKTAO"
-
-    # Replace with your notification details
-    notification_title = "App Started"
-    notification_body = "Your app has started successfully on machine : !" + device_id 
-
-    send_notification(pushbullet_api_key, notification_title, notification_body)
+    init_firebase()
+    firebase_sendData(get_deviceID())
+    print(firebase_readDate())
+    device_id = get_deviceID()
     if(device_id == "{293A6EE2-CB53-4420-8C5D-529C9EC990AC}" or device_id == "{956219e5-1e50-4492-8903-8e8e203ce095}"):
         # Create a ConfigParser object
         config = configparser.ConfigParser()
@@ -330,6 +344,7 @@ if __name__ == "__main__":
         # Access values from the configuration file
         verbus = config.get('Database', 'verbus')
         ignore_test_page = config.get('Database', 'ignore_test_page')
+        expected_remaining_time = config.get('Database', 'expected_remaining_time')
         print_welcome_page()
         # chrome exe file address
         if(ignore_test_page=="False"):
@@ -341,6 +356,6 @@ if __name__ == "__main__":
         setup_logging()
         if(verbus=="False"):
             disable_logging()
-        main()
+        main(expected_remaining_time)
     else:
         print("this machine is not supported ")
