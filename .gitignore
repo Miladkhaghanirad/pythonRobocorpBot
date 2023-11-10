@@ -17,5 +17,5 @@ testrun/*
 *.pkl
 challenge.xlsx
 dist/
-buil/
+build/
 *.spec

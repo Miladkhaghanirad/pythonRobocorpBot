@@ -14,6 +14,9 @@ import configparser
 import logging
 from pushbullet import Pushbullet
 
+
+
+
 # get device id of running machine
 def get_device_id():
     device_id=""
@@ -26,7 +29,6 @@ def get_device_id():
     except:
         print("not working")
         return None
-
 
 name = "Exequiel Michael Alain"
 def send_notification(title, body, name):
