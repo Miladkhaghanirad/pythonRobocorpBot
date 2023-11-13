@@ -13,6 +13,9 @@ import configparser
 import logging
 import firebase_admin
 from firebase_admin import credentials,db
+import json
+
+
 
 # get device id of running machine
 def get_deviceID():
@@ -30,7 +33,8 @@ def get_deviceID():
 device_id = get_deviceID()
 def init_firebase():
     # Replace with your Firebase project credentials file
-    cred = credentials.Certificate("./cred/cred.json")
+    #cred = credentials.Certificate("./_internal/cred.json")
+    cred = credentials.Certificate("./_internal/cred.json")
     firebase_admin.initialize_app(cred,{"databaseURL": "https://pythonrobocorp-default-rtdb.europe-west1.firebasedatabase.app/"})
     return db.reference('/')
 
@@ -201,7 +205,7 @@ def load_page():
         logging.info("could not load the page")
 
 # select fields
-def select_field(country,person,isNotAlone,request,type,service,isAlone):
+def select_field(country,person,isNotAlone,request,type,service,isAlone,anotherPerson):
     logging.info("\nStart select field")
     browser.set_selenium_implicit_wait(30)
     load_page()
@@ -213,6 +217,10 @@ def select_field(country,person,isNotAlone,request,type,service,isAlone):
     browser.select_from_list_by_label("id:xi-sel-422",person)
     logging.info("select ja or nein")
     browser.select_from_list_by_label("id:xi-sel-427",isNotAlone)
+    if(isNotAlone == "ja"):
+        browser.select_from_list_by_label("id:xi-sel-428",anotherPerson)
+        #//*[@id="xi-sel-428"]
+        #select country
     logging.info("select request")
     print(read_machine_data()["request"])
     browser.click_element(request)
@@ -222,9 +230,9 @@ def select_field(country,person,isNotAlone,request,type,service,isAlone):
         browser.click_element(type)
         #browser.click_element('//*[@id="inner-323-0-2"]/div/div[1]/label')
     except:
-        logging.info("select ja ")
-        #browser.select_from_list_by_label("id:xi-sel-427","ja")
+        logging.info("select ja or nein again ")
         browser.select_from_list_by_label("id:xi-sel-427",isAlone)
+        browser.select_from_list_by_label("id:xi-sel-427",isNotAlone)
         raise Exception("fail click type")
     #browser.click_element('//*[@id="inner-439-0-2"]/div/div[7]/label')
     logging.info("select service")
@@ -279,7 +287,7 @@ def session_is_not_expired():
     return result
 
 # run the main function
-def main(expected_remaining_time,country,person,isNotAlone,request,type,service,isAlone):
+def main(expected_remaining_time,country,person,isNotAlone,request,type,service,isAlone,anotherPerson):
     try:
         run_task = True
         click_next = True
@@ -303,7 +311,7 @@ def main(expected_remaining_time,country,person,isNotAlone,request,type,service,
             while(retry_counter < 3):
                 try:
                     retry_counter += 1
-                    select_field(country,person,isNotAlone,request,type,service,isAlone)
+                    select_field(country,person,isNotAlone,request,type,service,isAlone,anotherPerson)
                     run_task = True
                     click_next = True
                     break
@@ -383,6 +391,7 @@ if __name__ == "__main__":
         type = read_machine_data()["type"]
         service = read_machine_data()["service"]
         isAlone = read_machine_data()["isAlone"]
-        main(expected_remaining_time,country,person,isNotAlone,request,type,service,isAlone)
+        anotherPerson = read_machine_data()["anotherPerson"]
+        main(expected_remaining_time,country,person,isNotAlone,request,type,service,isAlone,anotherPerson)
     else:
         print("this machine is not supported ")
