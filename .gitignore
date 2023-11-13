@@ -16,7 +16,7 @@ testrun/*
 .~lock*
 *.pkl
 challenge.xlsx
-build/
+build/*
 dist/
 *.spec
 cred/
