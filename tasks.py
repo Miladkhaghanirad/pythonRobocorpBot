@@ -390,14 +390,6 @@ if __name__ == "__main__":
         else:
             isAlone = "nein"
 
-        # country = read_machine_data()["country"]
-        # person = read_machine_data()["person"]
-        # isNotAlone = read_machine_data()["!isAlone"]
-        # request = read_machine_data()["request"]
-        # type = read_machine_data()["type"]
-        # service = read_machine_data()["service"]
-        # isAlone = read_machine_data()["isAlone"]
-        # anotherPerson = read_machine_data()["anotherPerson"]
         main(expected_remaining_time,Country,NumberOfPersons,anotherFamilyMember,request,typeRequest,serviceRequest,isAlone,FamilyMemberCountry,check_fields)
     else:
         print("this machine is not supported ")
