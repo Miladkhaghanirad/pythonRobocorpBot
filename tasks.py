@@ -1,7 +1,6 @@
 from RPA.Browser.Selenium import Selenium
-from RPA.FileSystem import FileSystem
 import time
-from RPA.HTTP import HTTP
+from datetime import datetime
 import subprocess
 import winsound
 import psutil
@@ -11,10 +10,7 @@ import colorama
 from colorama import Fore, Style
 import configparser
 import logging
-import firebase_admin
-from firebase_admin import credentials,db
-import json
-
+import getRequest
 
 
 # get device id of running machine
@@ -31,30 +27,6 @@ def get_deviceID():
     return device_id
 
 device_id = get_deviceID()
-def init_firebase():
-    # Replace with your Firebase project credentials file
-    #cred = credentials.Certificate("./_internal/cred.json")
-    cred = credentials.Certificate("./_internal/cred.json")
-    firebase_admin.initialize_app(cred,{"databaseURL": "https://pythonrobocorp-default-rtdb.europe-west1.firebasedatabase.app/"})
-    return db.reference('/')
-
-def read_machine_data():
-    ref = db.reference('/'+device_id)
-    return ref.get()
-
-# retrieving data from root node of firebase
-def firebase_readDate():
-    ref = db.reference('/allowed')
-    return ref.get()
-
-# send data to root node of firebase
-def firebase_sendData(message):
-    ref = db.reference('/running')
-    new_message_ref = ref.push()
-    new_message_ref.set({
-    'sender': 'Bot',
-    'message': message
-})
 
 # setup logging for log in consol
 def setup_logging():
@@ -91,7 +63,7 @@ def stop_sound():
     time.sleep(1)
     winsound.Beep(500, 2000)  
 # print welcome page
-def print_welcome_page():
+def print_welcome_page(Name,LastName,birthday,Email,IDNumber):
     # Set text color to blue
     colorama.init()
    
@@ -114,18 +86,25 @@ def print_welcome_page():
         print(line)
 
     # Print company name
-    print(Fore.CYAN + Style.BRIGHT + "\n\t\t\t\tWelcome to ITWay!\n")
+    print(Fore.CYAN + Style.BRIGHT + "\n\t\t\t\tWelcome to GotToTermin(G2T) Bot !\n")
 
     # Print company motto
-    print(Fore.WHITE + "\t\t\tYour BOT for  your appointment needs.\n")
+    print(Fore.WHITE + "\t\t\tYour BOT for  your appointment needs.Version 1.0.2 \n")
+    print("contact Information:")
+    print(" Name : " + Name)
+    print(" Lastname : " + LastName)
+    print(" birthday : " + birthday)
+    print(" Email address : " + Email)
+    print(" ID Number : " + IDNumber)
 # test sound before start
 def test_sound():
     while True:
         print("1 - play appointment sound")
         print("2 - play bot stop sound")
-        print("3 - start the bot\n")
+        print("3 - send registiration request")
+        print("4 - start the bot\n")
 
-        choice = input("choose 1, 2, 3 or close the program : ")
+        choice = input("choose 1, 2, 3, 4 or close the program : ")
 
         if(choice == "1"):
             # call appointment sound
@@ -146,11 +125,13 @@ def test_sound():
             if ( answer == "n"):
                 print("Please contact us in telegram: https://t.me/MimMarouf ")
         if(choice == "3"):
+            print("start sending registiration request....")
+            getRequest.send_request(get_deviceID())
+            print("wait for admin aproval.")
+        if(choice == "4"):
             break
 # init all component
 def init(chrome_executable):
-
-
     # kill chrome process before start
     for process in psutil.process_iter(attrs=['pid', 'name']):
         try:
@@ -212,6 +193,10 @@ def select_field(country,person,isNotAlone,request,type,service,isAlone,anotherP
     browser.wait_until_element_is_visible('id:xi-sel-400',30)
     logging.info("try to select country")
     browser.select_from_list_by_label("id:xi-sel-400",country)
+    valueOfCountry = browser.get_element_attribute("id:xi-sel-400","value")
+    while(valueOfCountry == ''):
+        browser.select_from_list_by_label("id:xi-sel-400",country)
+        valueOfCountry = browser.get_element_attribute("id:xi-sel-400","value")
     browser.wait_until_element_is_visible('id:xi-sel-422',30)
     logging.info("try to select person")
     browser.select_from_list_by_label("id:xi-sel-422",person)
@@ -222,12 +207,15 @@ def select_field(country,person,isNotAlone,request,type,service,isAlone,anotherP
         #//*[@id="xi-sel-428"]
         #select country
     logging.info("select request")
-    print(read_machine_data()["request"])
-    browser.click_element(request)
+    # click on beantragen or verlängern
+    locator = f"xpath://*[@for[contains(.,'{request}')]]"
+    browser.click_element(locator)
+    #browser.click_element(request)
     #browser.click_element('//*[@id="xi-div-30"]/div[2]/label')
     logging.info("select type")
     try:
-        browser.click_element(type)
+        locator = f"xpath://*[@for[contains(.,'{type}')]]"
+        browser.click_element(locator)
         #browser.click_element('//*[@id="inner-323-0-2"]/div/div[1]/label')
     except:
         logging.info("select ja or nein again ")
@@ -287,7 +275,7 @@ def session_is_not_expired():
     return result
 
 # run the main function
-def main(expected_remaining_time,country,person,isNotAlone,request,type,service,isAlone,anotherPerson):
+def main(expected_remaining_time,country,person,isNotAlone,request,type,service,isAlone,anotherPerson,check_fields):
     try:
         run_task = True
         click_next = True
@@ -326,13 +314,15 @@ def main(expected_remaining_time,country,person,isNotAlone,request,type,service,
                     appointment_sound()
                     run_task = False
                     click_next = False
-                    firebase_sendData("Appointment available on machine  : " + get_deviceID() + " for person" )
+                    #firebase_sendData("Appointment available on machine  : " + get_deviceID() + " for person" )
                 else:
                     browser.set_selenium_implicit_wait(30)
                     # if session is expired, start from navigate again
                     if(session_is_not_expired() and is_remaining_time_enough(expected_remaining_time)):
                         logging.info("Session is still valid")
                         try:
+                            if(check_fields=="True"):
+                                select_field(country,person,isNotAlone,request,type,service,isAlone,anotherPerson)
                             browser.wait_until_element_is_visible('//*[@id="applicationForm:managedForm:proceed"]',30)
                             browser.wait_until_element_is_enabled('//*[@id="applicationForm:managedForm:proceed"]',30)
                             browser.click_element('//*[@id="applicationForm:managedForm:proceed"]')
@@ -349,34 +339,45 @@ def main(expected_remaining_time,country,person,isNotAlone,request,type,service,
             logging.error("Bot faced error with message: " + e.message)
         else:
             logging.error("bot faced error: ")
-
-
-
-def is_machine_allowed():
-    allowd_machine_list = firebase_readDate()
-    return allowd_machine_list[get_deviceID()] == "allowed"
-
-
     
 if __name__ == "__main__":
-    init_firebase()
-    firebase_sendData("The bot started on Machine : " + get_deviceID())
+    # Create a ConfigParser object
+    config = configparser.ConfigParser()
+    # Read the configuration file
+    config.read('config.ini')
+    # Access values from the configuration file
+    verbus = config.get('Database', 'verbus')
+    ignore_test_page = config.get('Database', 'ignore_test_page')
+    expected_remaining_time = config.get('Database', 'expected_remaining_time')
+    check_fields = config.get('Database', 'check_fields')
+    if(ignore_test_page=="False"):
+        test_sound()
     #if(device_id == "{293A6EE2-CB53-4420-8C5D-529C9EC990AC}" or device_id == "{956219e5-1e50-4492-8903-8e8e203ce095}"):
-    if(is_machine_allowed()):
-        firebase_sendData("Machine is allowed")
-        # Create a ConfigParser object
-        config = configparser.ConfigParser()
-        # Read the configuration file
-        config.read('config.ini')
-        # Access values from the configuration file
-        verbus = config.get('Database', 'verbus')
-        ignore_test_page = config.get('Database', 'ignore_test_page')
-        expected_remaining_time = config.get('Database', 'expected_remaining_time')
-        print_welcome_page()
+    if(getRequest.is_machine_allowed(device_id)):
+        CustomerID = getRequest.get_submissionID(device_ID=device_id)
+        Name,LastName,birthday,Email,IDNumber,Country,NumberOfPersons,anotherFamilyMember,FamilyMemberCountry,request,service = getRequest.get_information(customerID=CustomerID)
+        print_welcome_page(Name,LastName,birthday,Email,IDNumber)
         # chrome exe file address
-        if(ignore_test_page=="False"):
-            test_sound()
-            
+        if(request=='Aufenthaltstitel - verlängern'):
+            requestSelector= "2"
+            request = "-0-2"
+        elif(request == 'Aufenthaltstitel - beantragen') : 
+            requestSelector= "1"
+            request = "-0-1"
+        # choose studium or erwerbstätigkeit or Familie
+        DataOfRequest = service.split('\n')
+        serviceRequest = DataOfRequest[1]
+        typeRequest= DataOfRequest[0]
+        serviceRequest = str(serviceRequest).strip()
+        typeRequest = str(typeRequest).strip()
+        # service request = SERVICEWAHL_DE3439-0-1 and studium is SERVICEWAHL_DE_439-0-1-3
+        if(typeRequest == "Studium und Ausbildung"):
+            typeRequest = "-0-"+requestSelector + "-3" 
+        elif(typeRequest == "Erwerbstätigkeit"):
+            typeRequest = "-0-"+requestSelector + "-1" 
+        elif(typeRequest == "Familiäre Gründe"):
+            typeRequest = "-0-"+requestSelector + "-4" 
+
         chrome_executable = config.get('Database', 'chrome_address')
         init(chrome_executable)
         
@@ -384,14 +385,19 @@ if __name__ == "__main__":
         if(verbus=="False"):
             disable_logging()
 
-        country = read_machine_data()["country"]
-        person = read_machine_data()["person"]
-        isNotAlone = read_machine_data()["!isAlone"]
-        request = read_machine_data()["request"]
-        type = read_machine_data()["type"]
-        service = read_machine_data()["service"]
-        isAlone = read_machine_data()["isAlone"]
-        anotherPerson = read_machine_data()["anotherPerson"]
-        main(expected_remaining_time,country,person,isNotAlone,request,type,service,isAlone,anotherPerson)
+        if(anotherFamilyMember == "nein"):
+            isAlone = "ja"
+        else:
+            isAlone = "nein"
+
+        # country = read_machine_data()["country"]
+        # person = read_machine_data()["person"]
+        # isNotAlone = read_machine_data()["!isAlone"]
+        # request = read_machine_data()["request"]
+        # type = read_machine_data()["type"]
+        # service = read_machine_data()["service"]
+        # isAlone = read_machine_data()["isAlone"]
+        # anotherPerson = read_machine_data()["anotherPerson"]
+        main(expected_remaining_time,Country,NumberOfPersons,anotherFamilyMember,request,typeRequest,serviceRequest,isAlone,FamilyMemberCountry,check_fields)
     else:
         print("this machine is not supported ")
