@@ -28,6 +28,22 @@ def get_deviceID():
 
 device_id = get_deviceID()
 
+def fill_the_form():
+    print("start filling the form")
+    browser.set_selenium_implicit_wait(300)
+    browser.wait_until_element_is_visible('//*[@id="xi-fs-3"]/legend',600)
+    print("element is appeared")
+    browser.input_text("//*[@id='xi-tf-3']",Name)
+    browser.input_text("//*[@id='xi-tf-4']",LastName)
+    browser.input_text("//*[@id='xi-tf-5']",birthday)
+    browser.input_text("//*[@id='xi-tf-6']",Email)
+    if(browser.find_element("//*[@id='xi-sel-2']")):
+        browser.select_from_list_by_label("//*[@id='xi-sel-2']","Ja")
+        browser.input_text_when_element_is_visible("//*[@id='xi-tf-7']",IDNumber)
+    browser.click_element("//*[@id='applicationForm:managedForm:proceed']")
+    browser.wait_until_element_is_visible("//*[@id='summaryForm:proceed']",600)
+    browser.click_element("//*[@id='summaryForm:proceed']")
+    getRequest.send_report(device_id,Name,LastName)
 # setup logging for log in consol
 def setup_logging():
     # Create a logger
@@ -287,18 +303,6 @@ def main(expected_remaining_time,country,person,isNotAlone,request,type,service,
                 try:
                     retry_counter += 1
                     start_navigate()
-                    run_task = True
-                    click_next = True
-                    break
-                except:
-                    run_task = False
-                    click_next = False
-                    logging.info("error navigating,try again..." + str(retry_counter))
-            retry_counter = 0
-            # retry 3 times to select fields
-            while(retry_counter < 3):
-                try:
-                    retry_counter += 1
                     select_field(country,person,isNotAlone,request,type,service,isAlone,anotherPerson)
                     run_task = True
                     click_next = True
@@ -306,14 +310,20 @@ def main(expected_remaining_time,country,person,isNotAlone,request,type,service,
                 except:
                     run_task = False
                     click_next = False
-                    logging.info("error selecting field,try again..." + str(retry_counter))
+                    logging.info("error navigating or selecting field,try again..." + str(retry_counter))
             while click_next:
                 load_page()
                 # if appointment is available, ring 3 times (5 sec delay between them)
+                
                 if(is_appointment_available()):
                     appointment_sound()
-                    run_task = False
-                    click_next = False
+                    try:
+                        fill_the_form()
+                        run_task = False
+                        click_next = False
+                    except:
+                        run_task = False
+                        click_next = False
                     #firebase_sendData("Appointment available on machine  : " + get_deviceID() + " for person" )
                 else:
                     browser.set_selenium_implicit_wait(30)
@@ -358,7 +368,7 @@ if __name__ == "__main__":
         Name,LastName,birthday,Email,IDNumber,Country,NumberOfPersons,anotherFamilyMember,FamilyMemberCountry,request,service = getRequest.get_information(customerID=CustomerID)
         print_welcome_page(Name,LastName,birthday,Email,IDNumber)
         # chrome exe file address
-        if(request=='Aufenthaltstitel - verlängern'):
+        if(request =='Aufenthaltstitel - verlängern'):
             requestSelector= "2"
             request = "-0-2"
         elif(request == 'Aufenthaltstitel - beantragen') : 

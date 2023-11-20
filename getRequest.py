@@ -52,8 +52,6 @@ def is_machine_allowed(device_ID):
 
 def send_request(device_ID):
     url = 'https://pythonrobocorp-default-rtdb.europe-west1.firebasedatabase.app/request.json'
-    
-
     data = {
     'registration request from device_ID': device_ID
     }
@@ -67,8 +65,22 @@ def send_request(device_ID):
         print('Error:', response.status_code, response.text)
 
 
+
+def send_report(device_ID,name,family):
+    url = 'https://pythonrobocorp-default-rtdb.europe-west1.firebasedatabase.app/appointments.json'
+    data = {
+    'appointment got from device_ID': device_ID + " for " + name + " " + family
+    }
+
+# Convert the data to JSON format
+    json_data = json.dumps(data)
+    response = requests.post(url,json_data)
+    if response.status_code == 200:
+        print('appointment registiration done successfully!')
+    else:
+        print('Error:', response.status_code, response.text)
 #send_request("293A6EE2-CB53-4420-8C5D-529C9EC990AC")
 #get_information(5729338367975564387)
 #get_submissionID("293A6EE2-CB53-4420-8C5D-529C9EC990AC")
-
+#send_report("293A6EE2-CB53-4420-8C5D-529C9EC990AC","Milad","khaghanirad")
 #is_machine_allowed("293A6EE2-CB53-4420-8C5D-529C9EC990AC")
