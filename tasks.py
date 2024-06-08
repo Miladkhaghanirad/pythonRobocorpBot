@@ -33,17 +33,21 @@ def fill_the_form():
     browser.set_selenium_implicit_wait(300)
     browser.wait_until_element_is_visible('//*[@id="xi-fs-3"]/legend',600)
     print("element is appeared")
+    getRequest.send_report(device_id,Name,LastName)
     browser.input_text("//*[@id='xi-tf-3']",Name)
     browser.input_text("//*[@id='xi-tf-4']",LastName)
     browser.input_text("//*[@id='xi-tf-5']",birthday)
     browser.input_text("//*[@id='xi-tf-6']",Email)
-    if(browser.find_element("//*[@id='xi-sel-2']")):
-        browser.select_from_list_by_label("//*[@id='xi-sel-2']","Ja")
-        browser.input_text_when_element_is_visible("//*[@id='xi-tf-7']",IDNumber)
-    browser.click_element("//*[@id='applicationForm:managedForm:proceed']")
-    browser.wait_until_element_is_visible("//*[@id='summaryForm:proceed']",600)
-    browser.click_element("//*[@id='summaryForm:proceed']")
-    getRequest.send_report(device_id,Name,LastName)
+    browser.set_selenium_implicit_wait(3)
+    try:
+        if(browser.is_element_visible("//*[@id='xi-sel-2']")):
+            browser.select_from_list_by_label("//*[@id='xi-sel-2']","Ja")
+            browser.input_text_when_element_is_visible("//*[@id='xi-tf-7']",IDNumber)
+    finally:
+        browser.click_element("//*[@id='applicationForm:managedForm:proceed']")
+        browser.wait_until_element_is_visible("//*[@id='summaryForm:proceed']",600)
+        browser.click_element("//*[@id='summaryForm:proceed']")
+    
 # setup logging for log in consol
 def setup_logging():
     # Create a logger
@@ -192,7 +196,7 @@ def load_page():
     try:
         logging.info("\nstart load page")
         browser.set_selenium_implicit_wait(45)
-        for i in range(1, 121):
+        for i in range(1, 160):
             page_ready = browser.execute_javascript("return document.readyState")
             if page_ready in ['complete', 'interactive']:
                 logging.info("page loaded")
